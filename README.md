@@ -1,39 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Animated Lab - Luxury Watch Landing Page
 
-## Getting Started
+A high-end, interactive, and visually immersive website for a luxury watch brand. This project demonstrates cutting-edge web development techniques, featuring advanced scroll-based animations, 3D elements, and a modern aesthetic inspired by premium product showcases.
 
-First, run the development server:
+## 🌟 Key Features
+
+- **Immersive Hero Section**: A 240-frame scroll-scrubbing image sequence animation that smoothly rotates and inspects the watch as the user scrolls.
+- **Scroll-Triggered Animations**: Smooth, high-performance reveal and parallax animations powered by GSAP and Framer Motion.
+- **3D Renderings**: Interactive 3D elements and dynamic lighting using Three.js and React Three Fiber.
+- **Sticky Layouts**: Robust CSS-based sticky stacking for seamless transitions between sections (Horological Art, Movement, Specs).
+- **Responsive Design**: Carefully crafted to look flawless across all device sizes.
+- **Modern Minimalist UI**: Clean typography, glassmorphism, and a sophisticated dark/light balance.
+
+## 🛠️ Languages & Technologies
+
+This project is built with the modern React ecosystem, utilizing the latest tools for maximum performance and visual fidelity:
+
+- **[Next.js](https://nextjs.org/) (v16)**: The core React framework for routing, optimization, and server-side rendering.
+- **[React](https://react.dev/) (v19)**: The foundational UI library.
+- **[GSAP](https://gsap.com/) (v3)**: Used for precise, timeline-based scroll animations (via `@gsap/react`).
+- **[Framer Motion](https://www.framer.com/motion/)**: Handles declarative micro-interactions, page transitions, and UI state animations.
+- **[Three.js](https://threejs.org/)**: The underlying 3D graphics engine.
+- **[React Three Fiber & Drei](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction)**: For seamlessly integrating Three.js within React components, providing advanced 3D shaders and tools.
+- **Vanilla CSS**: Clean, scalable, modular styling without relying on external UI frameworks.
+- **[Lucide React](https://lucide.dev/)**: Beautiful, consistent iconography.
+
+## 🚀 Getting Started
+
+### Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Code-By-Nithin/The-Animated-Lab.git
+   ```
+2. Navigate to the project directory:
+   ```bash
+   cd The-Animated-Lab
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Running Locally
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the website in action.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 📂 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/                  # Next.js App Router (Pages, Layouts, Globals)
+└── components/           # Reusable UI React Components
+    ├── Hero.jsx          # Scroll-scrubbing 240-frame sequence
+    ├── ProductShowcase.jsx
+    ├── TechnicalSpecs.jsx
+    ├── FeaturesGallery.jsx
+    ├── Movement.jsx
+    ├── SocialProof.jsx
+    ├── Craftsmanship.jsx
+    └── ...
+public/                   # Static assets (3D models, textures, gallery images)
+```
 
-## Learn More
+## ✨ Design Philosophy
 
-To learn more about Next.js, take a look at the following resources:
+The focus of this architecture is to blur the line between a traditional website and a cinematic experience. By combining high-framerate scroll-linked sequences with true 3D contexts and meticulously optimized React components, the user is given a seamless, "weightless" journey through the hallmarks of high horology.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Preview Gallery
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-<img width="1408" height="768" alt="Gemini_Generated_Image_5z4im45z4im45z4i" src="https://github.com/user-attachments/assets/42338ddc-7224-4c78-8d45-2211b7429a2e" />
-
+<img width="1408" height="768" alt="Website Preview" src="https://github.com/user-attachments/assets/42338ddc-7224-4c78-8d45-2211b7429a2e" />
