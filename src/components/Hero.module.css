@@ -1,0 +1,94 @@
+.heroWrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh; /* Reverted to 100vh, GSAP will handle scroll padding */
+  background: #000;
+  overflow: clip; 
+}
+
+.stickyContainer {
+  position: relative; /* Removed sticky, GSAP will manually pin */
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.canvas {
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  z-index: 5;
+  filter: drop-shadow(0 40px 100px rgba(0,0,0,1));
+}
+
+.textOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.heroTitle {
+  font-family: var(--font-playfair);
+  font-size: clamp(4rem, 15vw, 12rem);
+  font-weight: 900;
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: white;
+  letter-spacing: -0.05em;
+  opacity: 0.1; /* High-end blurred feeling background title */
+  position: absolute;
+  z-index: 1;
+}
+
+.featureBox {
+  position: absolute;
+  max-width: 280px;
+  opacity: 0;
+  transform: translateY(30px);
+  z-index: 20;
+}
+
+.featureLabel {
+  font-size: 0.75rem;
+  color: var(--color-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.featureText {
+  font-size: 1.1rem;
+  color: white;
+  line-height: 1.4;
+  font-weight: 300;
+}
+
+/* Feature Placements (Apple Style) */
+.f1 { left: 10%; top: 30%; }
+.f2 { right: 10%; top: 50%; }
+.f3 { left: 15%; bottom: 20%; }
+
+.scrollIndicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--color-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  opacity: 0.4;
+  z-index: 100;
+}

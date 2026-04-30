@@ -1,0 +1,77 @@
+.specsSection {
+  padding: 8rem 5vw;
+  background-color: #030303;
+  color: var(--color-white);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  gap: 4rem;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+}
+
+.storyCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.sectionTitle {
+  font-size: 3rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.storyText {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--color-gray);
+  max-width: 500px;
+}
+
+.specsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.specItem {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: rgba(255,255,255,0.02);
+  padding: 2rem;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  transition: transform 0.3s, border-color 0.3s;
+}
+
+.specItem:hover {
+  transform: translateY(-5px);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.specIcon {
+  color: var(--color-gold);
+}
+
+.specLabel {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-gray);
+}
+
+.specValue {
+  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  color: var(--color-white);
+}

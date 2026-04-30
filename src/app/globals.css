@@ -1,0 +1,65 @@
+:root {
+  --color-obsidian: #0a0a0a;
+  --color-obsidian-light: #161616;
+  --color-gold: #d4af37;
+  --color-gold-light: #ebd68a;
+  --color-white: #ffffff;
+  --color-gray: #a3a3a3;
+  --font-heading: var(--font-playfair), serif;
+  --font-body: var(--font-inter), sans-serif;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--color-obsidian);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* Typography styles */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  margin: 0;
+  color: var(--color-white);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Utility to ensure scrolling is smooth or controlled properly via GSAP */
+.smooth-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Aesthetic enhancements */
+.gold-text {
+  color: var(--color-gold);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, var(--color-gold) 0%, #aa8222 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-panel {
+  background: rgba(22, 22, 22, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}

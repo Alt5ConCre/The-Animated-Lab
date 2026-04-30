@@ -1,0 +1,136 @@
+.perspectivesWrapper {
+  position: relative;
+  width: 100%;
+  height: 300vh; /* Scroll volume for the 3 panels */
+  background: var(--color-obsidian);
+}
+
+.stickyContainer {
+  position: sticky;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.horizontalScroll {
+  display: flex;
+  width: 300vw; /* 3 panels wide */
+  height: 100%;
+}
+
+.panel {
+  position: relative;
+  width: 100vw;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 10vw;
+  overflow: hidden;
+}
+
+/* Panel 1: Horological Art (Chiaroscuro) */
+.artPanel {
+  background: #0d0d0d;
+}
+
+.artContent {
+  display: flex;
+  gap: 5vw;
+  align-items: center;
+}
+
+.macroShot {
+  width: 40vw;
+  max-width: 600px;
+  filter: contrast(1.2) brightness(0.8) drop-shadow(0 40px 60px black);
+}
+
+.artText {
+  max-width: 450px;
+}
+
+/* Panel 2: Modern Executive (Bokeh Skyline) */
+.executivePanel {
+  background: linear-gradient(to right, #1a1a2e, #16213e);
+}
+
+.skylineBg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.1), transparent 50%);
+}
+
+.executiveContent {
+  z-index: 2;
+  text-align: center;
+}
+
+.lifestyleWatch {
+  width: 30vw;
+  max-width: 500px;
+  margin-bottom: 2rem;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+}
+
+/* Panel 3: Abstract Movement (Void + Trails) */
+.movementPanel {
+  background: #000;
+}
+
+.trailLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.movementContent {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.floatingWatch {
+  width: 25vw;
+  max-width: 400px;
+  animation: floatWatch 6s ease-in-out infinite;
+}
+
+@keyframes floatWatch {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-30px) rotate(5deg); }
+}
+
+/* Typography Hub */
+.conceptLabel {
+  font-family: var(--font-playfair);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: var(--color-gold);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.conceptTitle {
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  line-height: 1.1;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+.conceptDesc {
+  font-size: 1.1rem;
+  color: var(--color-gray);
+  line-height: 1.7;
+}
