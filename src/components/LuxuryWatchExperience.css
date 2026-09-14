@@ -1,0 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Manrope:wght@300;400;500;600&display=swap');
+
+.luxury-watch-page{position:relative;min-height:520vh;background:#030303;color:#eee;overflow:clip;font-family:Manrope,Arial,sans-serif}
+.watch-stage{position:fixed;inset:0;z-index:1;pointer-events:none}
+.watch-stage canvas{width:100%!important;height:100%!important}
+.watch-header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;justify-content:space-between;padding:30px 42px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.58);mix-blend-mode:screen}
+.watch-brand{color:#fff;letter-spacing:.42em}
+.watch-copy{position:relative;z-index:3;min-height:100vh;width:min(530px,calc(100% - 48px));display:flex;flex-direction:column;justify-content:center;margin-left:7vw;pointer-events:none}
+.eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;color:#ad9363;margin:0 0 22px;text-transform:uppercase}
+h1,h2{font-weight:300;letter-spacing:-.055em;line-height:.92;margin:0}
+h1{font-size:clamp(58px,9vw,132px)}
+h2{font-size:clamp(54px,7vw,104px)}
+em{font-family:Georgia,serif;font-weight:400;color:#c9a65b}
+.intro,.watch-detail-copy p{font-size:14px;line-height:1.8;color:rgba(255,255,255,.55);max-width:370px;margin-top:28px}
+.watch-detail-copy{margin-left:auto;margin-right:8vw;align-items:flex-end;text-align:right}
+.watch-detail-copy p{max-width:330px}
+.watch-final-copy{align-items:flex-start;padding-bottom:8vh}
+.watch-final-copy button{margin-top:38px;padding:15px 21px;border:1px solid rgba(201,166,91,.45);background:rgba(0,0,0,.22);color:#e7d9bd;font:10px 'DM Mono',monospace;letter-spacing:.18em;pointer-events:auto;cursor:pointer;backdrop-filter:blur(10px);transition:.25s}
+.watch-final-copy button:hover{border-color:#c9a65b;background:rgba(201,166,91,.08)}
+.watch-final-copy button span{margin-left:18px;color:#c9a65b}
+@media(max-width:700px){.watch-header{padding:20px}.watch-copy{width:calc(100% - 40px);margin-left:20px}.watch-detail-copy{margin-left:20px;margin-right:20px;align-items:flex-start;text-align:left}.watch-copy h1{font-size:58px}.watch-copy h2{font-size:54px}.watch-stage{transform:scale(1.08)} }
