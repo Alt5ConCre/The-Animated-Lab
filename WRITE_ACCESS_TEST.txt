@@ -1,2 +1,0 @@
-GitHub connector write-access test.
-Created by ChatGPT to verify write access. This file is safe to delete after verification.
