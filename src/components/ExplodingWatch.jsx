@@ -1,17 +1,54 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows, Environment, PerspectiveCamera, useGLTF } from '@react-three/drei';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import styles from './ExplodingWatch.module.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
 // High-detail CC BY 4.0 prototype asset. Replace with a cleared commercial asset before launch.
 const MODEL_URL = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb';
+
+function CinematicPostFX() {
+  const { gl, scene, camera, size } = useThree();
+  const composerRef = useRef();
+
+  useEffect(() => {
+    const composer = new EffectComposer(gl);
+    const renderPass = new RenderPass(scene, camera);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), 0.18, 0.32, 1.15);
+    const output = new OutputPass();
+    composer.addPass(renderPass);
+    composer.addPass(bloom);
+    composer.addPass(output);
+    composer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    composer.setSize(size.width, size.height);
+    composerRef.current = composer;
+
+    return () => {
+      composer.dispose();
+      composerRef.current = undefined;
+    };
+  }, [gl, scene, camera]);
+
+  useEffect(() => {
+    composerRef.current?.setSize(size.width, size.height);
+  }, [size]);
+
+  useFrame((_, delta) => {
+    composerRef.current?.render(delta);
+  }, 1);
+
+  return null;
+}
 
 function RealWatch({ progress }) {
   const { scene, animations } = useGLTF(MODEL_URL);
@@ -20,22 +57,40 @@ function RealWatch({ progress }) {
 
   const parts = useMemo(() => {
     const list = [];
+    const modelBox = new THREE.Box3().setFromObject(scene);
+    const modelCenter = modelBox.getCenter(new THREE.Vector3());
+    const modelSize = modelBox.getSize(new THREE.Vector3());
+    const maxDimension = Math.max(modelSize.x, modelSize.y, modelSize.z) || 1;
+
     scene.traverse((node) => {
       if (!node.isMesh) return;
+      const name = (node.name || '').toLowerCase();
+      if (name.includes('khronos') || name.includes('dgg') || name.includes('3dcommerce') || name.includes('3d_commerce')) {
+        node.visible = false;
+        return;
+      }
+
       node.castShadow = true;
       node.receiveShadow = true;
       node.frustumCulled = true;
-      const original = node.position.clone();
-      const world = new THREE.Vector3();
-      node.getWorldPosition(world);
+
       const box = new THREE.Box3().setFromObject(node);
       const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      list.push({ node, original, world, center, size });
+      const direction = center.sub(modelCenter);
+      direction.z *= 0.72;
+      if (direction.lengthSq() < 0.00001) direction.set(0, 0, 1);
+      direction.normalize();
 
-      const name = (node.name || '').toLowerCase();
-      if (name.includes('khronos') || name.includes('dgg') || name.includes('3dcommerce') || name.includes('3d_commerce')) node.visible = false;
+      list.push({
+        node,
+        original: node.position.clone(),
+        direction,
+        size: box.getSize(new THREE.Vector3()),
+        phase: list.length * 1.618,
+        depth: THREE.MathUtils.clamp(Math.abs(center.z - modelCenter.z) / maxDimension, 0, 1),
+      });
     });
+
     return list;
   }, [scene]);
 
@@ -45,13 +100,13 @@ function RealWatch({ progress }) {
       const materials = Array.isArray(node.material) ? node.material : [node.material];
       materials.forEach((mat) => {
         if (!mat) return;
-        mat.envMapIntensity = 2.15;
-        if ('roughness' in mat) mat.roughness = THREE.MathUtils.clamp(mat.roughness * 0.72, 0.12, 0.48);
-        if ('metalness' in mat && mat.metalness > 0.25) mat.metalness = Math.min(1, mat.metalness + 0.08);
-        if ('clearcoat' in mat) mat.clearcoat = Math.max(mat.clearcoat, 0.65);
-        if ('clearcoatRoughness' in mat) mat.clearcoatRoughness = 0.16;
+        mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 2.0);
+        if ('roughness' in mat) mat.roughness = THREE.MathUtils.clamp(mat.roughness * 0.82, 0.16, 0.5);
+        if ('metalness' in mat && mat.metalness > 0.2) mat.metalness = Math.min(1, mat.metalness + 0.05);
+        if ('clearcoat' in mat) mat.clearcoat = Math.max(mat.clearcoat, 0.5);
+        if ('clearcoatRoughness' in mat) mat.clearcoatRoughness = Math.min(mat.clearcoatRoughness || 0.2, 0.2);
         if ('ior' in mat) mat.ior = 1.5;
-        if ('reflectivity' in mat) mat.reflectivity = 0.7;
+        if ('reflectivity' in mat) mat.reflectivity = 0.65;
         mat.needsUpdate = true;
       });
     });
@@ -66,42 +121,50 @@ function RealWatch({ progress }) {
 
   useFrame((state, delta) => {
     mixerRef.current?.update(delta);
-    const intro = THREE.MathUtils.smoothstep(progress, 0, 0.24);
-    const explosion = THREE.MathUtils.smoothstep(progress, 0.38, 0.62);
-    const reassemble = THREE.MathUtils.smoothstep(progress, 0.76, 0.96);
+
+    const intro = THREE.MathUtils.smoothstep(progress, 0.0, 0.22);
+    const reveal = THREE.MathUtils.smoothstep(progress, 0.24, 0.42);
+    const explosion = THREE.MathUtils.smoothstep(progress, 0.42, 0.62);
+    const hold = THREE.MathUtils.smoothstep(progress, 0.62, 0.73);
+    const reassemble = THREE.MathUtils.smoothstep(progress, 0.74, 0.96);
     const spread = explosion * (1 - reassemble);
 
-    // Cinematic product rotation: deliberate and slow, never arcade-like.
-    root.current.rotation.x = THREE.MathUtils.lerp(-0.08, 0.08, progress);
-    root.current.rotation.y += delta * (0.055 + progress * 0.075);
-    root.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.18) * 0.006;
-    root.current.position.y = Math.sin(state.clock.elapsedTime * 0.55) * 0.008;
+    // Scroll controls the hero pose; idle movement is deliberately tiny so the watch remains readable.
+    const idle = Math.sin(state.clock.elapsedTime * 0.16) * 0.008;
+    root.current.rotation.x = THREE.MathUtils.lerp(-0.055, 0.045, intro) + idle;
+    root.current.rotation.y = THREE.MathUtils.lerp(-0.18, 0.22, reveal) + Math.sin(state.clock.elapsedTime * 0.22) * 0.018;
+    root.current.rotation.z = THREE.MathUtils.lerp(0.012, -0.01, progress);
+    root.current.position.y = Math.sin(state.clock.elapsedTime * 0.48) * 0.006;
 
-    // Wider, more photographic framing instead of an artificial zoom.
-    state.camera.position.x = Math.sin(progress * Math.PI * 1.2) * 0.22;
-    state.camera.position.y = THREE.MathUtils.lerp(0.03, 0.12, progress);
-    state.camera.position.z = THREE.MathUtils.lerp(7.1, 5.15, intro);
-    state.camera.fov = THREE.MathUtils.lerp(47, 40, THREE.MathUtils.smoothstep(progress, 0.08, 0.5));
-    state.camera.lookAt(0, 0.02, 0);
+    // Real-camera style dolly: mostly stable focal length, with a controlled macro push during the story.
+    const cameraProgress = THREE.MathUtils.smoothstep(progress, 0.03, 0.72);
+    state.camera.position.x = THREE.MathUtils.lerp(0.0, 0.18, cameraProgress) + Math.sin(progress * Math.PI) * 0.06;
+    state.camera.position.y = THREE.MathUtils.lerp(0.02, 0.08, cameraProgress);
+    state.camera.position.z = THREE.MathUtils.lerp(7.25, 5.65, cameraProgress);
+    state.camera.fov = THREE.MathUtils.lerp(46, 39, cameraProgress);
+    state.camera.lookAt(0, 0.03, 0);
     state.camera.updateProjectionMatrix();
 
-    parts.forEach(({ node, original, world, center, size }, i) => {
-      const radial = new THREE.Vector3(world.x, world.y, world.z);
-      radial.z *= 0.65;
-      if (radial.lengthSq() < 0.0001) radial.set(0, 0, 1);
-      radial.normalize();
-      const layer = i % 5;
-      const distance = layer === 0 ? 1.25 : layer === 1 ? 0.9 : layer === 2 ? 0.68 : layer === 3 ? 0.48 : 0.32;
-      const depthBias = Math.sin(i * 1.73) * 0.18;
-      const target = original.clone().add(radial.multiplyScalar(spread * (distance + depthBias)));
-      target.y += spread * Math.sin(i * 0.73) * 0.08;
-      node.position.lerp(target, 0.075);
+    parts.forEach(({ node, original, direction, size, phase, depth }) => {
+      // Layered explosion keeps the movement mechanical instead of looking like random particle debris.
+      const depthFactor = 0.72 + depth * 0.52;
+      const distance = 0.28 + depthFactor * 0.82;
+      const target = original.clone().add(direction.clone().multiplyScalar(spread * distance));
+      target.y += spread * Math.sin(phase) * 0.045;
+      target.z += spread * Math.cos(phase * 0.7) * 0.08;
+      node.position.lerp(target, 0.11);
 
-      // Tiny physical component motion during disassembly.
-      const motion = Math.min(1, size.length() * 0.15);
-      node.rotation.x += spread * motion * 0.0008;
-      node.rotation.z += spread * 0.0012 * (i % 2 ? 1 : -1);
+      const motion = THREE.MathUtils.clamp(size.length() * 0.12, 0.015, 0.08);
+      node.rotation.x += spread * Math.sin(phase) * motion * 0.018;
+      node.rotation.z += spread * Math.cos(phase) * motion * 0.018;
     });
+
+    // Slight breathing while the mechanical core is exposed.
+    if (hold > 0) {
+      root.current.scale.setScalar(1.58 + Math.sin(state.clock.elapsedTime * 0.7) * 0.004 * hold);
+    } else {
+      root.current.scale.setScalar(1.58);
+    }
   });
 
   return <primitive ref={root} object={scene} scale={1.58} />;
@@ -111,21 +174,21 @@ useGLTF.preload(MODEL_URL);
 
 function Scene({ progress }) {
   return <>
-    <PerspectiveCamera makeDefault position={[0, 0.03, 7.1]} fov={47} near={0.1} far={100} />
-    <ambientLight intensity={0.08} />
+    <PerspectiveCamera makeDefault position={[0, 0.02, 7.25]} fov={46} near={0.1} far={100} />
+    <ambientLight intensity={0.045} />
 
-    {/* Large soft sources create the long controlled highlights seen in luxury watch photography. */}
-    <rectAreaLight position={[0, 5.5, 4]} width={7} height={2.2} intensity={10} />
-    <rectAreaLight position={[4.8, 1.5, 2.8]} rotation={[0, 0.9, 0]} width={2.2} height={5.5} intensity={8} />
-    <rectAreaLight position={[-4.8, 1.2, 2.4]} rotation={[0, -0.9, 0]} width={2.2} height={5.5} intensity={7} />
-    <rectAreaLight position={[0, -3.2, 3]} width={5} height={1.4} intensity={4} />
-    <spotLight position={[3.5, 5.8, 5]} intensity={12} angle={0.32} penumbra={0.96} castShadow shadow-mapSize={[4096, 4096]} shadow-bias={-0.00002} />
-    <spotLight position={[-3.5, 3.5, 4]} intensity={8} angle={0.4} penumbra={1} castShadow shadow-mapSize={[2048, 2048]} />
-    <pointLight position={[0, 0, 3]} intensity={1.5} />
+    {/* Product-photography rig: broad soft reflections + narrow specular accents. */}
+    <rectAreaLight position={[0, 5.2, 4.5]} width={6.5} height={2.4} intensity={8.5} />
+    <rectAreaLight position={[4.6, 1.2, 3.1]} rotation={[0, 0.95, 0]} width={2.0} height={5.2} intensity={6.5} />
+    <rectAreaLight position={[-4.6, 1.0, 2.8]} rotation={[0, -0.95, 0]} width={2.0} height={5.0} intensity={5.5} />
+    <rectAreaLight position={[0, -3.0, 3.4]} width={4.5} height={1.2} intensity={2.8} />
+    <spotLight position={[3.2, 4.8, 5.5]} intensity={8.5} angle={0.28} penumbra={0.98} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.00002} />
+    <spotLight position={[-3.0, 3.0, 4.5]} intensity={5.5} angle={0.34} penumbra={1} />
 
-    <Environment preset="studio" environmentIntensity={1.25} />
+    <Environment preset="studio" environmentIntensity={1.05} />
     <RealWatch progress={progress} />
-    <ContactShadows position={[0, -1.05, 0]} opacity={0.38} scale={5} blur={2.8} far={4.5} resolution={1024} />
+    <ContactShadows position={[0, -1.05, 0]} opacity={0.32} scale={4.8} blur={2.6} far={4.2} resolution={768} />
+    <CinematicPostFX />
   </>;
 }
 
@@ -138,9 +201,11 @@ export default function ExplodingWatch() {
     const trigger = ScrollTrigger.create({
       trigger: section.current,
       start: 'top top',
-      end: '+=5600',
+      end: '+=6000',
       pin: true,
-      scrub: 1.4,
+      scrub: 1.1,
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
       onUpdate: (self) => {
         setProgress(self.progress);
         if (self.progress < 0.2) setActiveLabel('THE ICON');
@@ -150,12 +215,20 @@ export default function ExplodingWatch() {
         else setActiveLabel('FINAL ASSEMBLY');
       },
     });
-    return () => trigger.kill();
+
+    const refresh = () => ScrollTrigger.refresh();
+    window.addEventListener('resize', refresh);
+    window.addEventListener('orientationchange', refresh);
+    return () => {
+      window.removeEventListener('resize', refresh);
+      window.removeEventListener('orientationchange', refresh);
+      trigger.kill();
+    };
   }, []);
 
   return <section ref={section} className={styles.watchSection}>
     <div className={styles.canvasWrap}>
-      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, powerPreference: 'high-performance' }}>
+      <Canvas dpr={[1, 1.75]} shadows gl={{ antialias: true, powerPreference: 'high-performance', alpha: false }}>
         <color attach="background" args={['#010101']} />
         <Scene progress={progress} />
       </Canvas>
@@ -163,14 +236,14 @@ export default function ExplodingWatch() {
     <div className={styles.copy}>
       <p className={styles.eyebrow}>HOROLOGICAL OBJECT 01</p>
       <h1>TIME<br />ENGINEERED.</h1>
-      <p className={styles.description}>A cinematic mechanical chronograph rendered with photographic lighting, polished surfaces and controlled microscopic motion.</p>
+      <p className={styles.description}>A cinematic mechanical chronograph rendered like a luxury product campaign — controlled camera motion, physically based materials and a precision exploded movement.</p>
       <div className={styles.progress}><span style={{ transform: `scaleX(${Math.max(0.02, progress)})` }} /></div>
     </div>
     <div className={`${styles.labels} ${progress > 0.28 ? styles.visible : ''}`}>
       <span>{activeLabel}</span>
       <span>PHOTOREAL PBR</span>
       <span>STUDIO HDR LIGHTING</span>
-      <span>PRECISION EXPLODED VIEW</span>
+      <span>CINEMATIC POST FX</span>
     </div>
     <div className={styles.scrollHint}>SCROLL TO DISASSEMBLE ↓</div>
     <div className={styles.cta}><button type="button">DISCOVER THE MOVEMENT <span>→</span></button></div>
