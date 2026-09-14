@@ -1,7 +1,7 @@
 'use client';
 
-import ExplodingWatch from '@/components/ExplodingWatch';
+import CinematicWatch from '@/components/CinematicWatch';
 
 export default function Home() {
-  return <main><ExplodingWatch /></main>;
+  return <main><CinematicWatch /></main>;
 }
