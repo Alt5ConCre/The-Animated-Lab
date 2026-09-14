@@ -1,7 +1,7 @@
 'use client';
 
-import CinematicWatch from '@/components/CinematicWatch';
+import CinematicCar from '@/components/CinematicCar';
 
 export default function Home() {
-  return <main><CinematicWatch /></main>;
+  return <main><CinematicCar /></main>;
 }
