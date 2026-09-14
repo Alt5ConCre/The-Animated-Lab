@@ -22,7 +22,7 @@ const parts = [
 function WatchPart({ part, progress }) {
   const ref = useRef();
   const [x, y, z] = part.pos;
-  useFrame((state) => {
+  useFrame(() => {
     if (!ref.current) return;
     const explode = THREE.MathUtils.smoothstep(progress, 0.34, 0.62);
     const reassemble = THREE.MathUtils.smoothstep(progress, 0.72, 0.94);
@@ -31,7 +31,7 @@ function WatchPart({ part, progress }) {
     ref.current.position.x = x + Math.sin(progress * 7 + factor) * 0.06 + (part.id === 'crown' ? spread * 0.7 : 0);
     ref.current.position.y = y + (part.id === 'bezel' ? spread * 0.85 : part.id === 'dial' ? spread * 0.45 : part.id === 'crystal' ? spread * 1.1 : part.id === 'movement' ? -spread * 0.9 : 0);
     ref.current.position.z = z + spread * factor;
-    ref.current.rotation.x = progress * 0.55 + spread * factor * 0.5;
+    ref.current.rotation.x = Math.PI / 2 + progress * 0.55 + spread * factor * 0.5;
     ref.current.rotation.y = progress * 1.8 + spread * factor;
     ref.current.rotation.z = Math.sin(progress * 4) * 0.06;
   });
@@ -54,18 +54,9 @@ function WatchHands({ progress }) {
   });
   return (
     <group ref={group}>
-      <mesh position={[0.02, 0.22, 0]} castShadow>
-        <boxGeometry args={[0.035, 0.38, 0.018]} />
-        <meshStandardMaterial color="#f5f1df" metalness={0.9} roughness={0.2} />
-      </mesh>
-      <mesh position={[0.28, -0.02, 0.01]} rotation={[0, 0, -1.0]} castShadow>
-        <boxGeometry args={[0.03, 0.52, 0.018]} />
-        <meshStandardMaterial color="#f5f1df" metalness={0.9} roughness={0.2} />
-      </mesh>
-      <mesh position={[-0.24, 0.02, 0.02]} rotation={[0, 0, 0.5]}>
-        <boxGeometry args={[0.018, 0.36, 0.014]} />
-        <meshStandardMaterial color="#d4af37" metalness={1} roughness={0.12} />
-      </mesh>
+      <mesh position={[0.02, 0.22, 0]} castShadow><boxGeometry args={[0.035, 0.38, 0.018]} /><meshStandardMaterial color="#f5f1df" metalness={0.9} roughness={0.2} /></mesh>
+      <mesh position={[0.28, -0.02, 0.01]} rotation={[0, 0, -1.0]} castShadow><boxGeometry args={[0.03, 0.52, 0.018]} /><meshStandardMaterial color="#f5f1df" metalness={0.9} roughness={0.2} /></mesh>
+      <mesh position={[-0.24, 0.02, 0.02]} rotation={[0, 0, 0.5]}><boxGeometry args={[0.018, 0.36, 0.014]} /><meshStandardMaterial color="#d4af37" metalness={1} roughness={0.12} /></mesh>
     </group>
   );
 }
@@ -92,10 +83,7 @@ function WatchScene({ progress }) {
       <pointLight position={[0, -2, 2]} intensity={3} color="#d4af37" />
       <Environment preset="studio" environmentIntensity={0.65} />
       <Float speed={1.2} rotationIntensity={0.12} floatIntensity={0.16}>
-        <group ref={group}>
-          {parts.map((part) => <WatchPart key={part.id} part={part} progress={progress} />)}
-          <WatchHands progress={progress} />
-        </group>
+        <group ref={group}>{parts.map((part) => <WatchPart key={part.id} part={part} progress={progress} />)}<WatchHands progress={progress} /></group>
       </Float>
       <ContactShadows position={[0, -1.15, 0]} opacity={0.35} scale={5} blur={2.5} far={4} />
     </>
@@ -108,17 +96,7 @@ export default function ExplodingWatch() {
   const [activeLabel, setActiveLabel] = useState('THE ICON');
 
   useEffect(() => {
-    const trigger = ScrollTrigger.create({
-      trigger: section.current,
-      start: 'top top',
-      end: '+=4200',
-      pin: true,
-      scrub: 1.1,
-      onUpdate: (self) => {
-        setProgress(self.progress);
-        setActiveLabel(self.progress < 0.3 ? 'THE ICON' : self.progress < 0.58 ? 'THE MECHANISM' : self.progress < 0.82 ? 'ENGINEERED IN DETAIL' : 'TIME, REASSEMBLED');
-      },
-    });
+    const trigger = ScrollTrigger.create({ trigger: section.current, start: 'top top', end: '+=4200', pin: true, scrub: 1.1, onUpdate: (self) => { setProgress(self.progress); setActiveLabel(self.progress < 0.3 ? 'THE ICON' : self.progress < 0.58 ? 'THE MECHANISM' : self.progress < 0.82 ? 'ENGINEERED IN DETAIL' : 'TIME, REASSEMBLED'); } });
     return () => trigger.kill();
   }, []);
 
@@ -126,22 +104,9 @@ export default function ExplodingWatch() {
   return (
     <section ref={section} className={styles.watchSection}>
       <div className={styles.grain} />
-      <div className={styles.copy}>
-        <p className={styles.eyebrow}>THE ANIMATED LAB / HOROLOGY</p>
-        <h1>{activeLabel}</h1>
-        <p className={styles.description}>
-          A mechanical study in precision. Scroll to enter the case, separate every layer, and watch the architecture of time come alive.
-        </p>
-        <div className={styles.progress}><span style={{ transform: `scaleX(${progress})` }} /></div>
-      </div>
-      <div className={styles.canvasWrap}>
-        <Canvas dpr={[1, 1.75]} shadows gl={{ antialias: true, alpha: true }}>
-          <WatchScene progress={progress} />
-        </Canvas>
-      </div>
-      <div className={`${styles.labels} ${exploded ? styles.visible : ''}`}>
-        <span>904L STEEL</span><span>SAPPHIRE</span><span>AUTOMATIC CALIBRE</span>
-      </div>
+      <div className={styles.copy}><p className={styles.eyebrow}>THE ANIMATED LAB / HOROLOGY</p><h1>{activeLabel}</h1><p className={styles.description}>A mechanical study in precision. Scroll to enter the case, separate every layer, and watch the architecture of time come alive.</p><div className={styles.progress}><span style={{ transform: `scaleX(${progress})` }} /></div></div>
+      <div className={styles.canvasWrap}><Canvas dpr={[1, 1.75]} shadows gl={{ antialias: true, alpha: true }}><WatchScene progress={progress} /></Canvas></div>
+      <div className={`${styles.labels} ${exploded ? styles.visible : ''}`}><span>904L STEEL</span><span>SAPPHIRE</span><span>AUTOMATIC CALIBRE</span></div>
       <div className={styles.scrollHint}>{progress < 0.06 ? 'SCROLL TO DISCOVER' : `${Math.round(progress * 100)}%`}</div>
       <div className={styles.cta}><button>DISCOVER THE MOVEMENT <span>↗</span></button></div>
     </section>
