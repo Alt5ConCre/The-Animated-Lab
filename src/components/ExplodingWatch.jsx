@@ -24,7 +24,7 @@ function CinematicPostFX() {
   useEffect(() => {
     const composer = new EffectComposer(gl);
     const renderPass = new RenderPass(scene, camera);
-    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), 0.18, 0.32, 1.15);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), 0.12, 0.28, 1.2);
     const output = new OutputPass();
     composer.addPass(renderPass);
     composer.addPass(bloom);
@@ -43,10 +43,7 @@ function CinematicPostFX() {
     composerRef.current?.setSize(size.width, size.height);
   }, [size]);
 
-  useFrame((_, delta) => {
-    composerRef.current?.render(delta);
-  }, 1);
-
+  useFrame((_, delta) => composerRef.current?.render(delta), 1);
   return null;
 }
 
@@ -56,6 +53,7 @@ function RealWatch({ progress }) {
   const mixerRef = useRef();
 
   const parts = useMemo(() => {
+    scene.updateMatrixWorld(true);
     const list = [];
     const modelBox = new THREE.Box3().setFromObject(scene);
     const modelCenter = modelBox.getCenter(new THREE.Vector3());
@@ -75,22 +73,43 @@ function RealWatch({ progress }) {
       node.frustumCulled = true;
 
       const box = new THREE.Box3().setFromObject(node);
-      const center = box.getCenter(new THREE.Vector3());
-      const direction = center.sub(modelCenter);
-      direction.z *= 0.72;
-      if (direction.lengthSq() < 0.00001) direction.set(0, 0, 1);
-      direction.normalize();
+      const centerWorld = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const relative = centerWorld.clone().sub(modelCenter);
+
+      // Watches read best as a precision exploded stack: thickness/depth is the main
+      // separation axis, while X/Y only receive a tiny authored offset for readability.
+      const axialSign = relative.z >= 0 ? 1 : -1;
+      const depthRatio = THREE.MathUtils.clamp(Math.abs(relative.z) / maxDimension, 0, 1);
+      const radial = relative.clone().normalize();
+      const worldDirection = new THREE.Vector3(
+        radial.x * 0.16,
+        radial.y * 0.16,
+        axialSign * (0.86 + depthRatio * 0.2),
+      ).normalize();
+
+      // IMPORTANT: meshes in a GLB can have nested parents. Convert the world-space
+      // explosion direction back into the mesh parent's local coordinate system.
+      const parent = node.parent;
+      let localDirection = worldDirection.clone();
+      if (parent) {
+        const origin = parent.worldToLocal(centerWorld.clone());
+        const point = parent.worldToLocal(centerWorld.clone().add(worldDirection));
+        localDirection = point.sub(origin).normalize();
+      }
 
       list.push({
         node,
         original: node.position.clone(),
-        direction,
-        size: box.getSize(new THREE.Vector3()),
+        localDirection,
+        size,
+        depthRatio,
         phase: list.length * 1.618,
-        depth: THREE.MathUtils.clamp(Math.abs(center.z - modelCenter.z) / maxDimension, 0, 1),
       });
     });
 
+    // Sort by physical depth so the explosion reads as a deliberate mechanical stack.
+    list.sort((a, b) => a.depthRatio - b.depthRatio);
     return list;
   }, [scene]);
 
@@ -100,13 +119,13 @@ function RealWatch({ progress }) {
       const materials = Array.isArray(node.material) ? node.material : [node.material];
       materials.forEach((mat) => {
         if (!mat) return;
-        mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 2.0);
-        if ('roughness' in mat) mat.roughness = THREE.MathUtils.clamp(mat.roughness * 0.82, 0.16, 0.5);
-        if ('metalness' in mat && mat.metalness > 0.2) mat.metalness = Math.min(1, mat.metalness + 0.05);
-        if ('clearcoat' in mat) mat.clearcoat = Math.max(mat.clearcoat, 0.5);
-        if ('clearcoatRoughness' in mat) mat.clearcoatRoughness = Math.min(mat.clearcoatRoughness || 0.2, 0.2);
+        mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 1.8);
+        if ('roughness' in mat) mat.roughness = THREE.MathUtils.clamp(mat.roughness * 0.88, 0.18, 0.52);
+        if ('metalness' in mat && mat.metalness > 0.2) mat.metalness = Math.min(1, mat.metalness + 0.04);
+        if ('clearcoat' in mat) mat.clearcoat = Math.max(mat.clearcoat, 0.42);
+        if ('clearcoatRoughness' in mat) mat.clearcoatRoughness = Math.min(mat.clearcoatRoughness || 0.2, 0.22);
         if ('ior' in mat) mat.ior = 1.5;
-        if ('reflectivity' in mat) mat.reflectivity = 0.65;
+        if ('reflectivity' in mat) mat.reflectivity = 0.62;
         mat.needsUpdate = true;
       });
     });
@@ -122,49 +141,52 @@ function RealWatch({ progress }) {
   useFrame((state, delta) => {
     mixerRef.current?.update(delta);
 
-    const intro = THREE.MathUtils.smoothstep(progress, 0.0, 0.22);
-    const reveal = THREE.MathUtils.smoothstep(progress, 0.24, 0.42);
-    const explosion = THREE.MathUtils.smoothstep(progress, 0.42, 0.62);
-    const hold = THREE.MathUtils.smoothstep(progress, 0.62, 0.73);
-    const reassemble = THREE.MathUtils.smoothstep(progress, 0.74, 0.96);
-    const spread = explosion * (1 - reassemble);
+    // One deterministic scroll timeline: hero -> inspection -> axial explosion -> hold -> assembly.
+    const intro = THREE.MathUtils.smoothstep(progress, 0.0, 0.2);
+    const inspection = THREE.MathUtils.smoothstep(progress, 0.18, 0.38);
+    const explode = THREE.MathUtils.smoothstep(progress, 0.36, 0.64);
+    const explodedHold = THREE.MathUtils.smoothstep(progress, 0.60, 0.72);
+    const assembly = THREE.MathUtils.smoothstep(progress, 0.74, 0.96);
+    const spread = explode * (1 - assembly);
 
-    // Scroll controls the hero pose; idle movement is deliberately tiny so the watch remains readable.
-    const idle = Math.sin(state.clock.elapsedTime * 0.16) * 0.008;
-    root.current.rotation.x = THREE.MathUtils.lerp(-0.055, 0.045, intro) + idle;
-    root.current.rotation.y = THREE.MathUtils.lerp(-0.18, 0.22, reveal) + Math.sin(state.clock.elapsedTime * 0.22) * 0.018;
-    root.current.rotation.z = THREE.MathUtils.lerp(0.012, -0.01, progress);
-    root.current.position.y = Math.sin(state.clock.elapsedTime * 0.48) * 0.006;
+    // Subtle hero rotation only. Scroll should control the story, not spin the product wildly.
+    const idle = Math.sin(state.clock.elapsedTime * 0.14) * 0.006;
+    root.current.rotation.x = THREE.MathUtils.lerp(-0.045, 0.035, intro) + idle;
+    root.current.rotation.y = THREE.MathUtils.lerp(-0.16, 0.16, inspection) + Math.sin(state.clock.elapsedTime * 0.2) * 0.012;
+    root.current.rotation.z = THREE.MathUtils.lerp(0.008, -0.008, progress);
+    root.current.position.y = Math.sin(state.clock.elapsedTime * 0.42) * 0.005;
 
-    // Real-camera style dolly: mostly stable focal length, with a controlled macro push during the story.
-    const cameraProgress = THREE.MathUtils.smoothstep(progress, 0.03, 0.72);
-    state.camera.position.x = THREE.MathUtils.lerp(0.0, 0.18, cameraProgress) + Math.sin(progress * Math.PI) * 0.06;
-    state.camera.position.y = THREE.MathUtils.lerp(0.02, 0.08, cameraProgress);
-    state.camera.position.z = THREE.MathUtils.lerp(7.25, 5.65, cameraProgress);
-    state.camera.fov = THREE.MathUtils.lerp(46, 39, cameraProgress);
-    state.camera.lookAt(0, 0.03, 0);
+    // Controlled product-camera dolly. During the exploded hold we move to a subtle 3/4 view
+    // so the separated layers are legible without making the watch feel like a spinning toy.
+    const cameraProgress = THREE.MathUtils.smoothstep(progress, 0.03, 0.7);
+    const orbit = THREE.MathUtils.smoothstep(progress, 0.52, 0.72);
+    state.camera.position.x = THREE.MathUtils.lerp(0.0, 0.34, cameraProgress) + Math.sin(orbit * Math.PI) * 0.16;
+    state.camera.position.y = THREE.MathUtils.lerp(0.015, 0.16, cameraProgress);
+    state.camera.position.z = THREE.MathUtils.lerp(7.35, 5.95, cameraProgress);
+    state.camera.fov = THREE.MathUtils.lerp(46, 40, cameraProgress);
+    state.camera.lookAt(0, 0.02, 0);
     state.camera.updateProjectionMatrix();
 
-    parts.forEach(({ node, original, direction, size, phase, depth }) => {
-      // Layered explosion keeps the movement mechanical instead of looking like random particle debris.
-      const depthFactor = 0.72 + depth * 0.52;
-      const distance = 0.28 + depthFactor * 0.82;
-      const target = original.clone().add(direction.clone().multiplyScalar(spread * distance));
-      target.y += spread * Math.sin(phase) * 0.045;
-      target.z += spread * Math.cos(phase * 0.7) * 0.08;
-      node.position.lerp(target, 0.11);
+    parts.forEach(({ node, original, localDirection, size, depthRatio, phase }) => {
+      // Uneven axial spacing gives the same visual hierarchy as a real watch teardown:
+      // crystal/bezel first, dial/case next, movement deeper, rear components last.
+      const layerSpacing = 0.34 + depthRatio * 1.05;
+      const depthReveal = 0.9 + depthRatio * 0.65;
+      const target = original.clone().add(localDirection.clone().multiplyScalar(spread * layerSpacing * depthReveal));
 
-      const motion = THREE.MathUtils.clamp(size.length() * 0.12, 0.015, 0.08);
-      node.rotation.x += spread * Math.sin(phase) * motion * 0.018;
-      node.rotation.z += spread * Math.cos(phase) * motion * 0.018;
+      // Tiny lateral drift prevents coplanar parts from visually merging, but the dominant
+      // movement remains along the watch's mechanical thickness axis.
+      target.x += spread * Math.sin(phase) * 0.035;
+      target.y += spread * Math.cos(phase * 0.7) * 0.035;
+      node.position.lerp(target, 0.13);
+
+      // Almost imperceptible component tilt — no random particle-like tumbling.
+      const micro = THREE.MathUtils.clamp(size.length() * 0.06, 0.008, 0.045);
+      node.rotation.x += spread * Math.sin(phase) * micro * 0.012;
+      node.rotation.z += spread * Math.cos(phase) * micro * 0.012;
     });
 
-    // Slight breathing while the mechanical core is exposed.
-    if (hold > 0) {
-      root.current.scale.setScalar(1.58 + Math.sin(state.clock.elapsedTime * 0.7) * 0.004 * hold);
-    } else {
-      root.current.scale.setScalar(1.58);
-    }
+    root.current.scale.setScalar(1.58 + Math.sin(state.clock.elapsedTime * 0.65) * 0.002 * explodedHold);
   });
 
   return <primitive ref={root} object={scene} scale={1.58} />;
@@ -174,20 +196,19 @@ useGLTF.preload(MODEL_URL);
 
 function Scene({ progress }) {
   return <>
-    <PerspectiveCamera makeDefault position={[0, 0.02, 7.25]} fov={46} near={0.1} far={100} />
-    <ambientLight intensity={0.045} />
+    <PerspectiveCamera makeDefault position={[0, 0.015, 7.35]} fov={46} near={0.1} far={100} />
+    <ambientLight intensity={0.04} />
 
-    {/* Product-photography rig: broad soft reflections + narrow specular accents. */}
-    <rectAreaLight position={[0, 5.2, 4.5]} width={6.5} height={2.4} intensity={8.5} />
-    <rectAreaLight position={[4.6, 1.2, 3.1]} rotation={[0, 0.95, 0]} width={2.0} height={5.2} intensity={6.5} />
-    <rectAreaLight position={[-4.6, 1.0, 2.8]} rotation={[0, -0.95, 0]} width={2.0} height={5.0} intensity={5.5} />
-    <rectAreaLight position={[0, -3.0, 3.4]} width={4.5} height={1.2} intensity={2.8} />
-    <spotLight position={[3.2, 4.8, 5.5]} intensity={8.5} angle={0.28} penumbra={0.98} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.00002} />
-    <spotLight position={[-3.0, 3.0, 4.5]} intensity={5.5} angle={0.34} penumbra={1} />
+    <rectAreaLight position={[0, 5.2, 4.5]} width={6.5} height={2.4} intensity={8.0} />
+    <rectAreaLight position={[4.6, 1.2, 3.1]} rotation={[0, 0.95, 0]} width={2.0} height={5.2} intensity={6.0} />
+    <rectAreaLight position={[-4.6, 1.0, 2.8]} rotation={[0, -0.95, 0]} width={2.0} height={5.0} intensity={5.0} />
+    <rectAreaLight position={[0, -3.0, 3.4]} width={4.5} height={1.2} intensity={2.6} />
+    <spotLight position={[3.2, 4.8, 5.5]} intensity={8.0} angle={0.28} penumbra={0.98} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.00002} />
+    <spotLight position={[-3.0, 3.0, 4.5]} intensity={5.0} angle={0.34} penumbra={1} />
 
-    <Environment preset="studio" environmentIntensity={1.05} />
+    <Environment preset="studio" environmentIntensity={1.0} />
     <RealWatch progress={progress} />
-    <ContactShadows position={[0, -1.05, 0]} opacity={0.32} scale={4.8} blur={2.6} far={4.2} resolution={768} />
+    <ContactShadows position={[0, -1.05, 0]} opacity={0.3} scale={4.8} blur={2.6} far={4.2} resolution={768} />
     <CinematicPostFX />
   </>;
 }
@@ -201,17 +222,17 @@ export default function ExplodingWatch() {
     const trigger = ScrollTrigger.create({
       trigger: section.current,
       start: 'top top',
-      end: '+=6000',
+      end: '+=6200',
       pin: true,
-      scrub: 1.1,
+      scrub: 1.15,
       anticipatePin: 1,
       invalidateOnRefresh: true,
       onUpdate: (self) => {
         setProgress(self.progress);
-        if (self.progress < 0.2) setActiveLabel('THE ICON');
-        else if (self.progress < 0.42) setActiveLabel('PRECISION CASE');
-        else if (self.progress < 0.68) setActiveLabel('MECHANICAL CORE');
-        else if (self.progress < 0.88) setActiveLabel('COMPONENTS');
+        if (self.progress < 0.18) setActiveLabel('THE ICON');
+        else if (self.progress < 0.36) setActiveLabel('PRECISION CASE');
+        else if (self.progress < 0.60) setActiveLabel('MECHANICAL CORE');
+        else if (self.progress < 0.78) setActiveLabel('EXPLODED ASSEMBLY');
         else setActiveLabel('FINAL ASSEMBLY');
       },
     });
@@ -239,7 +260,7 @@ export default function ExplodingWatch() {
       <p className={styles.description}>A cinematic mechanical chronograph rendered like a luxury product campaign — controlled camera motion, physically based materials and a precision exploded movement.</p>
       <div className={styles.progress}><span style={{ transform: `scaleX(${Math.max(0.02, progress)})` }} /></div>
     </div>
-    <div className={`${styles.labels} ${progress > 0.28 ? styles.visible : ''}`}>
+    <div className={`${styles.labels} ${progress > 0.25 ? styles.visible : ''}`}>
       <span>{activeLabel}</span>
       <span>PHOTOREAL PBR</span>
       <span>STUDIO HDR LIGHTING</span>
