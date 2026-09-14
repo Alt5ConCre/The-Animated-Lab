@@ -1,9 +1,6 @@
-import ExplodingWatch from '@/components/ExplodingWatch';
+import LuxuryWatchExperience from '@/components/LuxuryWatchExperience';
+import '@/components/LuxuryWatchExperience.css';
 
 export default function Home() {
-  return (
-    <main className="smooth-wrapper">
-      <ExplodingWatch />
-    </main>
-  );
+  return <LuxuryWatchExperience />;
 }
