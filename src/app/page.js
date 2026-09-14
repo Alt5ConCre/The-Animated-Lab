@@ -1,6 +1,7 @@
-import LuxuryWatchExperience from '@/components/LuxuryWatchExperience';
-import '@/components/LuxuryWatchExperience.css';
+'use client';
+
+import ExplodingWatch from '@/components/ExplodingWatch';
 
 export default function Home() {
-  return <LuxuryWatchExperience />;
+  return <ExplodingWatch />;
 }
